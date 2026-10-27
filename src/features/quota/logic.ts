@@ -150,3 +150,76 @@ export function paginate<T>(items: T[], page: number, pageSize: number): QuotaPa
     totalPages,
   };
 }
+
+export interface QuotaEntryGroup {
+  type: QuotaProviderType;
+  entries: QuotaFileEntry[];
+}
+
+/** Ledger groups in first-appearance order, keeping the sorted order inside each group. */
+export function groupQuotaEntries(entries: QuotaFileEntry[]): QuotaEntryGroup[] {
+  const groups = new Map<QuotaProviderType, QuotaFileEntry[]>();
+  for (const entry of entries) {
+    const list = groups.get(entry.type) ?? [];
+    list.push(entry);
+    groups.set(entry.type, list);
+  }
+  return [...groups].map(([type, list]) => ({ type, entries: list }));
+}
+
+export interface QuotaWindowTotal {
+  id: string;
+  label: string;
+  labelKey?: string;
+  labelParams?: Record<string, string | number>;
+  /** Summed remaining percent: 100 per credential that reported the window. */
+  remaining: number;
+  count: number;
+}
+
+interface TotalWindowLike {
+  id?: string;
+  label?: string;
+  labelKey?: string;
+  labelParams?: Record<string, string | number>;
+  usedPercent?: number | null;
+  periodHours?: number | null;
+}
+
+/**
+ * Per-window remaining totals for a provider group card, from loaded reads only.
+ * Claude and Codex store percent used on `windows[]`; other shapes add nothing.
+ * Windows are ordered longest first, the main limit leading.
+ */
+export function sumQuotaWindows(
+  entries: QuotaFileEntry[],
+  quotaFor: (entry: QuotaFileEntry) => { status?: string } | undefined
+): QuotaWindowTotal[] {
+  const totals = new Map<string, QuotaWindowTotal>();
+  const periods = new Map<string, number>();
+  for (const entry of entries) {
+    if (entry.type !== 'claude' && entry.type !== 'codex') continue;
+    const quota = quotaFor(entry);
+    if (!quota || quota.status !== 'success') continue;
+    for (const window of (quota as { windows?: TotalWindowLike[] }).windows ?? []) {
+      if (!window.id || typeof window.usedPercent !== 'number') continue;
+      const remaining = Math.min(100, Math.max(0, 100 - window.usedPercent));
+      const total = totals.get(window.id);
+      if (total) {
+        total.remaining += remaining;
+        total.count += 1;
+      } else {
+        totals.set(window.id, {
+          id: window.id,
+          label: window.label ?? window.id,
+          labelKey: window.labelKey,
+          labelParams: window.labelParams,
+          remaining,
+          count: 1,
+        });
+        periods.set(window.id, window.periodHours ?? 0);
+      }
+    }
+  }
+  return [...totals.values()].sort((a, b) => (periods.get(b.id) ?? 0) - (periods.get(a.id) ?? 0));
+}

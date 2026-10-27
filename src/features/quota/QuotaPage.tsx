@@ -23,16 +23,20 @@ import { useAuthStore, useQuotaStore, useThemeStore } from '@/stores';
 import type { AuthFileItem, ResolvedTheme } from '@/types';
 import { getQuotaCacheKey } from '@/utils/quota/identity';
 import { ProviderTabs } from '@/features/authFiles/components/ProviderTabs';
+import { getTypeLabel } from '@/features/authFiles/constants';
 import { QuotaHeader } from './components/QuotaHeader';
 import { QuotaCard } from './components/QuotaCard';
+import { QuotaGroupCard } from './components/QuotaGroupCard';
 import { QuotaTimeline } from './components/QuotaTimeline';
 import {
   CARD_ENTRANCE_BUDGET_MS,
   QUOTA_PAGE_SIZE,
   QUOTA_SORT_MODES,
   QUOTA_TAB_ORDER,
+  QUOTA_VIEW_MODES,
   type QuotaSortMode,
   type QuotaTabId,
+  type QuotaViewMode,
 } from './constants';
 import {
   buildTabCounts,
@@ -40,10 +44,14 @@ import {
   classifyQuotaFiles,
   filterEntriesByTab,
   filterEntriesBySearch,
+  groupQuotaEntries,
   paginate,
   sortQuotaEntries,
+  sumQuotaWindows,
   type QuotaFileEntry,
 } from './logic';
+import { QuotaHistoryPanel } from './history/QuotaHistoryPanel';
+import { useQuotaHistory } from './history/useQuotaHistory';
 import { nextRecoveryMs } from './resetSchedule';
 import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from './providers';
 import type { QuotaProviderType } from './providers/types';
@@ -65,6 +73,7 @@ const displayNameFor = (name: string) => name;
 export function QuotaPage() {
   const { t } = useTranslation();
   const connectionStatus = useAuthStore((state) => state.connectionStatus);
+  const apiBase = useAuthStore((state) => state.apiBase);
   const resolvedTheme: ResolvedTheme = useThemeStore((state) => state.resolvedTheme);
 
   const [files, setFiles] = useState<AuthFileItem[]>([]);
@@ -74,6 +83,10 @@ export function QuotaPage() {
   const [sortMode, setSortMode] = useState<QuotaSortMode>(
     () => readQuotaUiState()?.sortMode ?? 'default'
   );
+  const [viewMode, setViewMode] = useState<QuotaViewMode>(
+    () => readQuotaUiState()?.viewMode ?? 'ledger'
+  );
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(() => new Set());
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -210,6 +223,26 @@ export function QuotaPage() {
     writeQuotaUiState({ sortMode: next as QuotaSortMode });
   }, []);
 
+  const handleViewModeChange = useCallback((next: string) => {
+    setViewMode(next as QuotaViewMode);
+    writeQuotaUiState({ viewMode: next as QuotaViewMode });
+  }, []);
+
+  const toggleGroup = useCallback((type: string) => {
+    setCollapsedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }, []);
+
+  const viewOptions = useMemo(
+    () =>
+      QUOTA_VIEW_MODES.map((mode) => ({ value: mode, label: t(`quota_management.view_${mode}`) })),
+    [t]
+  );
+
   const sortOptions = useMemo(
     () =>
       QUOTA_SORT_MODES.map((mode) => ({ value: mode, label: t(`quota_management.sort_${mode}`) })),
@@ -247,6 +280,10 @@ export function QuotaPage() {
       });
     });
   }, [entries, error, filesGeneration, loading, sessionGeneration]);
+
+  /* ---------- 历史：记录每次成功读取，并合并服务端记录器的样本 ---------- */
+
+  const quotaHistory = useQuotaHistory(entries, getQuota, apiBase);
 
   /* ---------- 加载与操作 ---------- */
 
@@ -321,6 +358,21 @@ export function QuotaPage() {
 
   /* ---------- 渲染 ---------- */
 
+  const renderCard = (entry: QuotaFileEntry, index: number, layout: 'card' | 'row') => (
+    <QuotaCard
+      key={`${entry.type}:${getQuotaCacheKey(entry.file)}`}
+      entry={entry}
+      quota={getQuota(entry)}
+      resolvedTheme={resolvedTheme}
+      canRefresh={canUseActions && !entry.file.disabled}
+      resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
+      entranceDelayMs={cardEntranceDelay(index)}
+      layout={layout}
+      onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+      onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+    />
+  );
+
   const isEmpty = !loading && filteredEntries.length === 0;
 
   return (
@@ -345,6 +397,12 @@ export function QuotaPage() {
             onChange={handleTabChange}
           />
         </div>
+
+        <QuotaHistoryPanel
+          history={quotaHistory}
+          tab={tab}
+          providerLabel={tab === 'all' ? '' : getTypeLabel(t, tab)}
+        />
 
         <div className={styles.toolbar}>
           <div className={styles.search}>
@@ -372,6 +430,15 @@ export function QuotaPage() {
                 <IconX size={14} aria-hidden="true" />
               </button>
             )}
+          </div>
+          <div className={`${styles.sort} ${styles.view}`}>
+            <Select
+              value={viewMode}
+              options={viewOptions}
+              onChange={handleViewModeChange}
+              ariaLabel={t('quota_management.view_label')}
+              size="sm"
+            />
           </div>
           <div className={styles.sort}>
             <Select
@@ -424,21 +491,35 @@ export function QuotaPage() {
               )
             }
           />
+        ) : viewMode === 'ledger' ? (
+          <div className={styles.ledger}>
+            {groupQuotaEntries(pageItems).map((group) => {
+              const collapsed = collapsedGroups.has(group.type);
+              const rowsId = `quota-ledger-${group.type}`;
+              return (
+                <section key={group.type} className={styles.ledgerGroup}>
+                  <QuotaGroupCard
+                    type={group.type}
+                    count={group.entries.length}
+                    totals={sumQuotaWindows(group.entries, getQuota)}
+                    resolvedTheme={resolvedTheme}
+                    collapsed={collapsed}
+                    rowsId={rowsId}
+                    onToggle={() => toggleGroup(group.type)}
+                  />
+                  <div id={rowsId} className={styles.ledgerRows} hidden={collapsed}>
+                    {!collapsed &&
+                      group.entries.map((entry) =>
+                        renderCard(entry, pageItems.indexOf(entry), 'row')
+                      )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         ) : (
           <div className={styles.grid}>
-            {pageItems.map((entry, index) => (
-              <QuotaCard
-                key={`${entry.type}:${getQuotaCacheKey(entry.file)}`}
-                entry={entry}
-                quota={getQuota(entry)}
-                resolvedTheme={resolvedTheme}
-                canRefresh={canUseActions && !entry.file.disabled}
-                resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
-                entranceDelayMs={cardEntranceDelay(index)}
-                onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
-                onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
-              />
-            ))}
+            {pageItems.map((entry, index) => renderCard(entry, index, 'card'))}
           </div>
         )}
 

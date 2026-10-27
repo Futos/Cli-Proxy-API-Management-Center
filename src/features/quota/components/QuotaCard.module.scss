@@ -308,3 +308,49 @@
     animation: none;
   }
 }
+
+/* ---------- 账本行：身份 | 额度窗口 | 操作 并排 ----------
+ * 额度窗口在 body 内按列排布；横跨整行的芯片/提示由 QuotaBody 模块
+ * 在 [data-quota-layout='row'] 下声明。 */
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 24px;
+  row-gap: 8px;
+  padding: 12px 18px;
+
+  .body {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    align-items: start;
+    gap: 10px 24px;
+  }
+
+  .idleBody {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    min-height: 44px;
+  }
+
+  .actionRow {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  @include mobile {
+    grid-template-columns: minmax(0, 1fr);
+
+    .actionRow {
+      flex-direction: row;
+      justify-content: flex-start;
+    }
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    transform: none;
+  }
+}

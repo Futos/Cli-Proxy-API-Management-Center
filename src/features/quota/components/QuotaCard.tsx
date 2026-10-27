@@ -35,6 +35,8 @@ export type QuotaCardProps = {
   resetting: boolean;
   /** Initial cascade delay; null disables entrance motion for later mounts. */
   entranceDelayMs?: number | null;
+  /** `row` lays identity, limits and actions out side by side for the ledger view. */
+  layout?: 'card' | 'row';
   onRefresh: () => void;
   onReset: () => void;
 };
@@ -47,6 +49,7 @@ export function QuotaCard(props: QuotaCardProps) {
     canRefresh,
     resetting,
     entranceDelayMs,
+    layout = 'card',
     onRefresh,
     onReset,
   } = props;
@@ -112,7 +115,14 @@ export function QuotaCard(props: QuotaCardProps) {
 
   return (
     <article
-      className={`${styles.card} ${mountEntranceDelayMs === null ? '' : styles.cardEnter}`}
+      className={[
+        styles.card,
+        layout === 'row' ? styles.row : '',
+        mountEntranceDelayMs === null ? '' : styles.cardEnter,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      data-quota-layout={layout === 'row' ? 'row' : undefined}
       style={entranceStyle}
     >
       <header className={styles.head}>

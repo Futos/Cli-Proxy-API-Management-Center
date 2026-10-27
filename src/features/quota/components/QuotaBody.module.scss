@@ -798,3 +798,21 @@
       0 0 10px rgba(190, 218, 250, 0.3);
   }
 }
+
+/* 账本行（QuotaCard layout="row"）：窗口成列，表头允许折行；
+ * 套餐芯片、重置额度列表与提示横跨所有列。 */
+:global([data-quota-layout='row']) {
+  .quotaRowHeader,
+  .quotaMeta {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .codexPlan,
+  .codexResetCredits,
+  .codexResetCreditsError,
+  .quotaMessage,
+  .antigravityQuotaGroup {
+    grid-column: 1 / -1;
+  }
+}

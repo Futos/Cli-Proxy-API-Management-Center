@@ -119,6 +119,11 @@
   }
 }
 
+/* 视图切换与排序同为右侧安静下拉；auto 外边距把两者一起推到右端 */
+.view {
+  margin-left: auto;
+}
+
 .sort {
   flex: 0 0 auto;
   min-width: 148px;
@@ -192,6 +197,27 @@
   gap: 16px;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
   align-items: stretch;
+}
+
+/* ---------- 账本视图：提供商分组卡 + 单列凭证行 ---------- */
+
+.ledger {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ledgerGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ledgerRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* ---------- 分页 ---------- */

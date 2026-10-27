@@ -1,26 +1,48 @@
 import {
   QUOTA_SORT_MODES,
   QUOTA_TAB_ORDER,
+  QUOTA_VIEW_MODES,
   type QuotaSortMode,
   type QuotaTabId,
+  type QuotaViewMode,
 } from './constants';
+import {
+  QUOTA_HISTORY_RANGES,
+  type QuotaHistoryMode,
+  type QuotaHistoryRangeId,
+} from './history/model';
 
 /** 额度页 UI 偏好：会话级持久化（sessionStorage），跨会话不携带。 */
 export type QuotaUiState = {
   tab?: QuotaTabId;
   sortMode?: QuotaSortMode;
+  viewMode?: QuotaViewMode;
+  historyMode?: QuotaHistoryMode;
+  historyRange?: QuotaHistoryRangeId;
+  historyCollapsed?: boolean;
 };
 
 const QUOTA_UI_STATE_KEY = 'quotaPage.uiState';
 
 const QUOTA_TAB_ID_SET = new Set<string>(['all', ...QUOTA_TAB_ORDER]);
 const QUOTA_SORT_MODE_SET = new Set<string>(QUOTA_SORT_MODES);
+const QUOTA_VIEW_MODE_SET = new Set<string>(QUOTA_VIEW_MODES);
+const QUOTA_HISTORY_RANGE_SET = new Set<string>(QUOTA_HISTORY_RANGES.map((range) => range.id));
 
 export const isQuotaTabId = (value: unknown): value is QuotaTabId =>
   typeof value === 'string' && QUOTA_TAB_ID_SET.has(value);
 
 export const isQuotaSortMode = (value: unknown): value is QuotaSortMode =>
   typeof value === 'string' && QUOTA_SORT_MODE_SET.has(value);
+
+export const isQuotaViewMode = (value: unknown): value is QuotaViewMode =>
+  typeof value === 'string' && QUOTA_VIEW_MODE_SET.has(value);
+
+const isHistoryMode = (value: unknown): value is QuotaHistoryMode =>
+  value === 'remaining' || value === 'drain';
+
+const isHistoryRange = (value: unknown): value is QuotaHistoryRangeId =>
+  typeof value === 'string' && QUOTA_HISTORY_RANGE_SET.has(value);
 
 export const readQuotaUiState = (): QuotaUiState | null => {
   if (typeof window === 'undefined') return null;
@@ -32,6 +54,11 @@ export const readQuotaUiState = (): QuotaUiState | null => {
     return {
       tab: isQuotaTabId(parsed.tab) ? parsed.tab : undefined,
       sortMode: isQuotaSortMode(parsed.sortMode) ? parsed.sortMode : undefined,
+      viewMode: isQuotaViewMode(parsed.viewMode) ? parsed.viewMode : undefined,
+      historyMode: isHistoryMode(parsed.historyMode) ? parsed.historyMode : undefined,
+      historyRange: isHistoryRange(parsed.historyRange) ? parsed.historyRange : undefined,
+      historyCollapsed:
+        typeof parsed.historyCollapsed === 'boolean' ? parsed.historyCollapsed : undefined,
     };
   } catch {
     return null;
