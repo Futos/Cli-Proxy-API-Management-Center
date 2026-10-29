@@ -1685,7 +1685,8 @@
     "tooltip": "{{time}} · {{value}} {{unit}}",
     "summary_drain": "消耗速率（{{range}}）：平均每小時 {{average}}%，峰值每小時 {{peak}}%",
     "summary_remaining": "剩餘配額（{{range}}）：{{value}}% / {{capacity}}%",
-    "empty_range": "此範圍內尚無歷史。每次載入配額時都會記錄樣本。",
+    "empty_range": "此範圍內尚無歷史。每次載入配額時都會記錄樣本；選用的伺服器記錄器會補齊頁面關閉期間的資料。",
+    "empty_drain": "樣本不足，暫無法計算消耗速率。需要同一帳號兩次間隔不超過 {{minutes}} 分鐘的讀數——請保持此頁面開啟，或執行伺服器記錄器。",
     "empty_provider": "此分組尚無配額歷史。載入 Claude 與 Codex 憑證配額時會記錄歷史。",
     "table": "資料表",
     "table_time": "時間"
