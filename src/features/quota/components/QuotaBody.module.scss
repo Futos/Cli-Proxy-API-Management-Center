@@ -808,6 +808,12 @@
     row-gap: 2px;
   }
 
+  /* 列宽可窄于遥测串：允许收缩并在列内折行，而非溢入相邻窗口列 */
+  .quotaMeta {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
   .codexPlan,
   .codexResetCredits,
   .codexResetCreditsError,
