@@ -93,6 +93,13 @@ describe('ledger rendering', () => {
     expect(page).toContain("renderCard(entry, pageItems.indexOf(entry), 'row')");
     expect(page).toContain('hidden={collapsed}');
   });
+
+  test('row layout lets reset telemetry wrap inside its window column', () => {
+    const body = readFileSync('src/features/quota/components/QuotaBody.module.scss', 'utf8');
+    const rowBlock = body.slice(body.indexOf(":global([data-quota-layout='row'])"));
+    // A non-shrinking meta keeps its max-content width and spills into the next column.
+    expect(rowBlock).toMatch(/\.quotaMeta \{[^}]*flex-shrink: 1;[^}]*min-width: 0;/);
+  });
 });
 
 describe('quota history panel rendering', () => {
