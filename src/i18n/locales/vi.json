@@ -1614,7 +1614,8 @@
     "tooltip": "{{time}} · {{value}} {{unit}}",
     "summary_drain": "Tốc độ tiêu hao, {{range}}: trung bình {{average}} % mỗi giờ, đỉnh {{peak}} % mỗi giờ",
     "summary_remaining": "Hạn mức còn lại, {{range}}: {{value}} % trên {{capacity}} %",
-    "empty_range": "Chưa có lịch sử trong khoảng này. Mẫu được thêm mỗi khi tải hạn mức.",
+    "empty_range": "Chưa có lịch sử trong khoảng này. Mẫu được thêm mỗi khi tải hạn mức; trình ghi phía máy chủ (tùy chọn) bổ sung những giờ trang đóng.",
+    "empty_drain": "Chưa đủ mẫu để tính tốc độ tiêu hao. Cần hai lần đọc của cùng một tài khoản cách nhau tối đa {{minutes}} phút — hãy giữ trang này mở hoặc chạy trình ghi phía máy chủ.",
     "empty_provider": "Tab này chưa có lịch sử hạn mức. Lịch sử được ghi cho thông tin xác thực Claude và Codex khi tải hạn mức.",
     "table": "Bảng dữ liệu",
     "table_time": "Thời gian"

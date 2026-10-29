@@ -1658,7 +1658,8 @@
     "tooltip": "{{time}} · {{value}} {{unit}}",
     "summary_drain": "소진 속도, {{range}}: 평균 시간당 {{average}} %, 최고 시간당 {{peak}} %",
     "summary_remaining": "남은 할당량, {{range}}: {{capacity}} % 중 {{value}} %",
-    "empty_range": "이 기간에는 아직 기록이 없습니다. 할당량을 불러올 때마다 샘플이 추가됩니다.",
+    "empty_range": "이 기간에는 아직 기록이 없습니다. 할당량을 불러올 때마다 샘플이 추가되며, 선택 사항인 서버 기록기가 페이지가 닫혀 있던 시간을 채웁니다.",
+    "empty_drain": "소진 속도를 계산할 샘플이 아직 부족합니다. 같은 계정을 {{minutes}}분 이내 간격으로 두 번 읽어야 합니다. 이 페이지를 열어 두거나 서버 기록기를 실행하세요.",
     "empty_provider": "이 탭에는 아직 할당량 기록이 없습니다. Claude와 Codex 자격 증명의 할당량을 불러오면 기록됩니다.",
     "table": "데이터 표",
     "table_time": "시간"

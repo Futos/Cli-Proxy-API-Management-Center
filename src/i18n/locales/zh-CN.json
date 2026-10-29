@@ -1657,7 +1657,8 @@
     "tooltip": "{{time}} · {{value}} {{unit}}",
     "summary_drain": "消耗速率（{{range}}）：平均每小时 {{average}}%，峰值每小时 {{peak}}%",
     "summary_remaining": "剩余额度（{{range}}）：{{value}}% / {{capacity}}%",
-    "empty_range": "该范围内暂无历史。每次加载额度时都会记录样本。",
+    "empty_range": "该范围内暂无历史。每次加载额度时都会记录样本；可选的服务器记录器会补全页面关闭期间的数据。",
+    "empty_drain": "样本不足，暂无法计算消耗速率。需要同一账号两次间隔不超过 {{minutes}} 分钟的读数——请保持此页面打开，或运行服务器记录器。",
     "empty_provider": "此分组暂无额度历史。加载 Claude 与 Codex 凭证额度时会记录历史。",
     "table": "数据表",
     "table_time": "时间"

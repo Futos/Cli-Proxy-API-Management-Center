@@ -1658,7 +1658,8 @@
     "tooltip": "{{time}} · {{value}} {{unit}}",
     "summary_drain": "Drain rate, {{range}}: average {{average}} % per hour, peak {{peak}} % per hour",
     "summary_remaining": "Remaining quota, {{range}}: {{value}} % of {{capacity}} %",
-    "empty_range": "No history in this range yet. Samples are added whenever quota is loaded.",
+    "empty_range": "No history in this range yet. A sample is added whenever quota loads; the optional server recorder fills the hours the page is closed.",
+    "empty_drain": "Not enough samples for a drain rate yet. It needs two readings of the same account at most {{minutes}} minutes apart — keep this page open or run the server recorder.",
     "empty_provider": "No quota history for this tab yet. History is recorded for Claude and Codex credentials when their quota loads.",
     "table": "Data table",
     "table_time": "Time"

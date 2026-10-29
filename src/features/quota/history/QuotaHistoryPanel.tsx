@@ -215,7 +215,13 @@ export function QuotaHistoryPanel(props: QuotaHistoryPanelProps) {
                       capacity: formatQuotaPercent(latest?.capacity),
                     })
               }
-              emptyText={t('quota_history.empty_range')}
+              emptyText={
+                drainMode
+                  ? t('quota_history.empty_drain', {
+                      minutes: Math.round(series.maxGapMs / MINUTE_MS),
+                    })
+                  : t('quota_history.empty_range')
+              }
               formatValue={formatQuotaPercent}
               formatTime={formatTime}
               formatTick={formatTick}
