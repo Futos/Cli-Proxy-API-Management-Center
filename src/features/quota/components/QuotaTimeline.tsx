@@ -27,6 +27,7 @@ import {
   timelineSpan,
   DAY_MS,
 } from '../quotaTimelineModel';
+import { QUOTA_SENSITIVE_CLASS } from '../constants';
 import type { TimelineLane, TimelineMode } from '../quotaTimelineModel';
 import type { QuotaFileEntry } from '../logic';
 import type { QuotaCardState } from '../providers';
@@ -60,6 +61,8 @@ export interface QuotaTimelineProps {
   initialMode?: TimelineMode;
   /** Injectable initial date offset for tests/screenshots; defaults to the current period. */
   initialOffset?: number;
+  /** "Show emails" is off: lane names are blurred and kept out of tooltips. */
+  namesMasked?: boolean;
 }
 
 export function QuotaTimeline({
@@ -70,6 +73,7 @@ export function QuotaTimeline({
   now: nowProp,
   initialMode = 'weekly',
   initialOffset = 0,
+  namesMasked = false,
 }: QuotaTimelineProps) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<TimelineMode>(initialMode);
@@ -259,6 +263,7 @@ export function QuotaTimeline({
               <Lane
                 key={lane.name}
                 lane={lane}
+                namesMasked={namesMasked}
                 span={span}
                 now={now}
                 mode={mode}
@@ -310,6 +315,7 @@ export function QuotaTimeline({
 
 interface LaneProps {
   lane: TimelineLane;
+  namesMasked: boolean;
   span: { startMs: number; endMs: number; days: number };
   now: number;
   mode: TimelineMode;
@@ -318,7 +324,8 @@ interface LaneProps {
   resolvedTheme: ResolvedTheme;
 }
 
-function Lane({ lane, span, now, mode, cells, nowPercent, resolvedTheme }: LaneProps) {
+function Lane(props: LaneProps) {
+  const { lane, span, now, mode, cells, nowPercent, resolvedTheme, namesMasked } = props;
   const { t, i18n } = useTranslation();
 
   const windows = useMemo(
@@ -349,7 +356,10 @@ function Lane({ lane, span, now, mode, cells, nowPercent, resolvedTheme }: LaneP
       <div className={styles.laneHead}>
         <div className={styles.laneTop}>
           <span className={styles.laneDot} />
-          <span className={styles.laneName} title={lane.displayName}>
+          <span
+            className={`${styles.laneName} ${QUOTA_SENSITIVE_CLASS}`}
+            title={namesMasked ? undefined : lane.displayName}
+          >
             {lane.displayName}
           </span>
           {periodLabel && <span className={styles.lanePeriod}>{periodLabel}</span>}
@@ -400,7 +410,7 @@ function Lane({ lane, span, now, mode, cells, nowPercent, resolvedTheme }: LaneP
                 key={window.startMs}
                 className={`${styles.window} ${styles[`window${capitalize(window.state)}`]}`}
                 style={{ left: `${window.leftPercent}%`, width: `${window.widthPercent}%` }}
-                title={`${lane.displayName}\n${formatDay(window.startMs)} ${formatTime(
+                title={`${namesMasked ? '' : `${lane.displayName}\n`}${formatDay(window.startMs)} ${formatTime(
                   window.startMs
                 )} → ${formatDay(window.endMs)} ${formatTime(window.endMs)}${
                   window.remaining !== null ? `\n${window.remaining}% remaining` : ''

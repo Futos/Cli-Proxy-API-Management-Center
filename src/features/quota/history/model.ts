@@ -31,23 +31,12 @@ export interface QuotaHistory {
 
 export const QUOTA_HISTORY_PROVIDERS: ReadonlySet<QuotaProviderType> = new Set(['claude', 'codex']);
 
-export const QUOTA_HISTORY_RANGES = [
-  { id: '6h', ms: 6 * HOUR_MS },
-  { id: '24h', ms: 24 * HOUR_MS },
-  { id: '7d', ms: 7 * 24 * HOUR_MS },
-] as const;
-
-export type QuotaHistoryRangeId = (typeof QUOTA_HISTORY_RANGES)[number]['id'];
-export type QuotaHistoryMode = 'remaining' | 'drain';
-
-/** One more day than the longest range, so a 7-day view still has its first hour. */
+/** Eight days: a week back from the chart's lead-in, plus its first day's burn window. */
 export const QUOTA_HISTORY_RETENTION_MS = 8 * 24 * HOUR_MS;
 const MAX_SAMPLES = 4000;
 const DEFAULT_INTERVAL_SECONDS = 600;
 /** Re-reading a quota within this span replaces the previous local sample. */
 const SAMPLE_MERGE_MS = MINUTE_MS;
-/** A drain point needs at least this much observed time in its trailing hour. */
-const MIN_COVERAGE_MS = 15 * MINUTE_MS;
 
 export const emptyQuotaHistory = (): QuotaHistory => ({
   intervalSeconds: DEFAULT_INTERVAL_SECONDS,
@@ -55,9 +44,6 @@ export const emptyQuotaHistory = (): QuotaHistory => ({
   samples: [],
   updatedAt: 0,
 });
-
-export const findQuotaHistoryRange = (id: string | undefined) =>
-  QUOTA_HISTORY_RANGES.find((range) => range.id === id) ?? QUOTA_HISTORY_RANGES[1];
 
 /* ------------------------------------------------------------ snapshots */
 
@@ -201,7 +187,7 @@ export function windowHours(id: string): number {
   return Number(/^(\d+)h$/.exec(id)?.[1] ?? 0);
 }
 
-const MAIN_WINDOW_IDS = ['seven-day', 'weekly'];
+export const MAIN_WINDOW_IDS = ['seven-day', 'weekly'];
 
 /**
  * The window each credential is measured by: the account-wide weekly limit,
@@ -224,175 +210,6 @@ export function mainWindows(samples: QuotaHistorySample[]): Map<string, string> 
   return main;
 }
 
-/** Auth indexes of one tab; `all` takes every recorded credential. */
-export function credentialsForTab(history: QuotaHistory, tab: string): Set<string> {
-  return new Set(
-    Object.entries(history.credentials)
-      .filter(([, meta]) => tab === 'all' || meta.provider === tab)
-      .map(([authIndex]) => authIndex)
-  );
-}
-
 /** Samples further apart than this are a gap, not a slow interval. */
 export const maxSampleGapMs = (history: QuotaHistory) =>
   Math.max(2.5 * history.intervalSeconds * 1000, 25 * MINUTE_MS);
-
-export interface QuotaHistoryPoint {
-  t: number;
-  /** Null marks missing history at this instant. */
-  value: number | null;
-}
-
-export interface QuotaRemainingPoint extends QuotaHistoryPoint {
-  /** 100 per credential contributing to `value`. */
-  capacity: number;
-}
-
-export interface QuotaHistorySeries {
-  from: number;
-  to: number;
-  maxGapMs: number;
-  remaining: QuotaRemainingPoint[];
-  drain: QuotaHistoryPoint[];
-  /** Mean drain over the whole range, percent per hour. */
-  averageDrain: number | null;
-  peakDrain: number | null;
-  latest: QuotaRemainingPoint | null;
-  mainWindowIds: string[];
-}
-
-interface Interval {
-  start: number;
-  end: number;
-}
-
-function overlap(intervals: Interval[], start: number, end: number): number {
-  let total = 0;
-  for (const interval of intervals) {
-    if (interval.end <= start) continue;
-    if (interval.start >= end) break;
-    total += Math.min(end, interval.end) - Math.max(start, interval.start);
-  }
-  return total;
-}
-
-function union(intervals: Interval[]): Interval[] {
-  const sorted = [...intervals].sort((a, b) => a.start - b.start);
-  const merged: Interval[] = [];
-  for (const interval of sorted) {
-    const last = merged[merged.length - 1];
-    if (last && interval.start <= last.end) last.end = Math.max(last.end, interval.end);
-    else merged.push({ ...interval });
-  }
-  return merged;
-}
-
-/**
- * Remaining sum and drain rate for a set of credentials.
- *
- * Drain is tracked per credential between its own consecutive readings, so a
- * browser sample covering two accounts and a recorder sample covering all of
- * them interleave correctly. Increases are resets and never count as negative
- * usage. Each drain point is the trailing one-hour mean over observed time;
- * without at least 15 observed minutes the point is a gap.
- */
-export function buildQuotaHistorySeries(
-  history: QuotaHistory,
-  credentials: Set<string>,
-  rangeMs: number,
-  now: number
-): QuotaHistorySeries {
-  const from = now - rangeMs;
-  const maxGapMs = maxSampleGapMs(history);
-  const samples = history.samples.filter(
-    (sample) => sample.t >= from - HOUR_MS - maxGapMs && sample.t <= now
-  );
-  const main = mainWindows(samples);
-  const valueOf = (sample: QuotaHistorySample, authIndex: string) => {
-    const id = main.get(authIndex);
-    return id === undefined ? undefined : sample.v[authIndex]?.[id];
-  };
-
-  const last = new Map<string, { t: number; value: number }>();
-  const usage: { t: number; used: number }[] = [];
-  const observed: Interval[] = [];
-  const remaining: QuotaRemainingPoint[] = [];
-
-  for (const sample of samples) {
-    for (const authIndex of credentials) {
-      const value = valueOf(sample, authIndex);
-      if (value === undefined) continue;
-      const previous = last.get(authIndex);
-      if (previous && sample.t - previous.t <= maxGapMs) {
-        observed.push({ start: previous.t, end: sample.t });
-        if (previous.value > value) usage.push({ t: sample.t, used: previous.value - value });
-      }
-      last.set(authIndex, { t: sample.t, value });
-    }
-    if (sample.t < from) continue;
-    let sum = 0;
-    let count = 0;
-    for (const authIndex of credentials) {
-      const known = last.get(authIndex);
-      if (known && sample.t - known.t <= maxGapMs) {
-        sum += known.value;
-        count += 1;
-      }
-    }
-    remaining.push({ t: sample.t, value: count > 0 ? sum : null, capacity: count * 100 });
-  }
-
-  const coverage = union(observed);
-  const drain: QuotaHistoryPoint[] = [];
-  let start = 0;
-  let used = 0;
-  let end = 0;
-  for (const point of remaining) {
-    while (end < usage.length && usage[end].t <= point.t) used += usage[end++].used;
-    while (start < end && usage[start].t <= point.t - HOUR_MS) used -= usage[start++].used;
-    const covered = overlap(coverage, point.t - HOUR_MS, point.t);
-    drain.push({
-      t: point.t,
-      value: covered >= MIN_COVERAGE_MS ? Math.max(0, used) / (covered / HOUR_MS) : null,
-    });
-  }
-
-  const rangeCovered = overlap(coverage, from, now);
-  const rangeUsed = usage.filter((u) => u.t > from).reduce((total, u) => total + u.used, 0);
-  const drainValues = drain.map((point) => point.value).filter((v): v is number => v !== null);
-  const ids = new Set<string>();
-  credentials.forEach((authIndex) => {
-    const id = main.get(authIndex);
-    if (id) ids.add(id);
-  });
-
-  return {
-    from,
-    to: now,
-    maxGapMs,
-    remaining,
-    drain,
-    averageDrain: rangeCovered >= MIN_COVERAGE_MS ? rangeUsed / (rangeCovered / HOUR_MS) : null,
-    peakDrain: drainValues.length > 0 ? Math.max(...drainValues) : null,
-    latest: [...remaining].reverse().find((point) => point.value !== null) ?? null,
-    mainWindowIds: [...ids],
-  };
-}
-
-/** Split a series into drawable runs; nulls and over-long gaps break the line. */
-export function seriesSegments<T extends QuotaHistoryPoint>(points: T[], maxGapMs: number) {
-  const segments: (T & { value: number })[][] = [];
-  let current: (T & { value: number })[] = [];
-  let previousT: number | null = null;
-  for (const point of points) {
-    const broken = point.value === null || (previousT !== null && point.t - previousT > maxGapMs);
-    if (broken && current.length > 0) {
-      segments.push(current);
-      current = [];
-    }
-    if (point.value !== null) current.push(point as T & { value: number });
-    previousT = point.t;
-  }
-  if (current.length > 0) segments.push(current);
-  return segments;
-}

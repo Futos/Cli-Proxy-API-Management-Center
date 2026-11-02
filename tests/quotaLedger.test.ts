@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import i18n from '../src/i18n/index';
 import { QuotaGroupCard } from '../src/features/quota/components/QuotaGroupCard';
-import { QuotaHistoryPanel } from '../src/features/quota/history/QuotaHistoryPanel';
+import { QuotaPoolPanel } from '../src/features/quota/history/QuotaPoolPanel';
 import {
   groupQuotaEntries,
   sumQuotaWindows,
@@ -102,7 +102,7 @@ describe('ledger rendering', () => {
   });
 });
 
-describe('quota history panel rendering', () => {
+describe('quota pool panel rendering', () => {
   const history: QuotaHistory = {
     intervalSeconds: 600,
     updatedAt: NOW - 4 * MINUTE,
@@ -112,28 +112,59 @@ describe('quota history panel rendering', () => {
       v: { a: { 'seven-day': 70 - index }, b: { 'seven-day': 90 } },
     })),
   };
+  const entries = [entry('a', 'claude'), entry('b', 'claude'), entry('k', 'kimi')];
+  const quotaFor = (item: QuotaFileEntry) =>
+    item.file.name === 'a'
+      ? ({
+          status: 'success',
+          windows: [
+            {
+              id: 'seven-day',
+              usedPercent: 42,
+              resetAtMs: NOW + 30 * 60 * MINUTE,
+              periodHours: 168,
+            },
+          ],
+        } as unknown as ReturnType<Parameters<typeof QuotaPoolPanel>[0]['quotaFor']>)
+      : undefined;
 
-  test('shows the summed headroom, burn rate and the drain chart', () => {
-    const markup = renderToStaticMarkup(
-      createElement(QuotaHistoryPanel, { history, tab: 'claude', providerLabel: 'Claude', now: NOW })
+  const render = (tab: Parameters<typeof QuotaPoolPanel>[0]['tab']) =>
+    renderToStaticMarkup(
+      createElement(QuotaPoolPanel, {
+        history,
+        tab,
+        entries,
+        quotaFor,
+        resolvedTheme: 'dark',
+        now: NOW,
+      })
     );
+
+  test('shows the pool headline, forecast stats and recorded/projected chart', () => {
+    const markup = render('claude');
+    // a is live at 58 %, b falls back to its last recorded 90 %.
     expect(markup).toContain('148%');
-    expect(markup).toContain('/ 200% remaining');
-    expect(markup).toContain('~6% per hour');
-    expect(markup).toContain('Peak 6 % per hour');
-    expect(markup).toContain('All Claude accounts');
-    expect(markup).toContain('Gaps mean missing history');
-    expect(markup).toContain('role="tablist"');
-    expect(markup).toMatch(/aria-label="Drain rate, Last 24 hours: average 6 % per hour/);
+    expect(markup).toContain('of 200%');
+    expect(markup).toContain('2 accounts');
+    expect(markup).toContain('Pool empty');
+    expect(markup).toContain('First empty');
+    expect(markup).toContain('Next reset');
+    expect(markup).toContain('Burn, last 3h');
+    // a loses 1 % per 10 minutes = 6 %/h; b is flat.
+    expect(markup).toContain('6%/h');
+    // a runs dry in 9h 40m, so its reset 30 h out refills the full 100 %.
+    expect(markup).toContain('in 9h 40m');
+    expect(markup).toContain('+100%');
+    expect(markup).not.toMatch(/<td>--<\/td><td>projected/);
+    expect(markup).toContain('Recorded');
+    expect(markup).toContain('Projected');
+    expect(markup).toContain('>Now<');
+    expect(markup).toContain('quota-sensitive');
+    expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain('<path d="M');
   });
 
-  test('explains an empty tab instead of drawing a flat line', () => {
-    const markup = renderToStaticMarkup(
-      createElement(QuotaHistoryPanel, { history, tab: 'xai', providerLabel: 'xAI', now: NOW })
-    );
-    expect(markup).toContain('--%');
-    expect(markup).toContain('No quota history for this tab yet');
-    expect(markup).not.toContain('<svg class');
+  test('renders nothing on a tab without pool history', () => {
+    expect(render('kimi')).toBe('');
   });
 });

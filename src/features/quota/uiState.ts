@@ -7,19 +7,23 @@ import {
   type QuotaViewMode,
 } from './constants';
 import {
-  QUOTA_HISTORY_RANGES,
-  type QuotaHistoryMode,
-  type QuotaHistoryRangeId,
-} from './history/model';
+  POOL_BURN_WINDOWS,
+  POOL_FUTURE_USAGE,
+  type PoolBurnWindow,
+  type PoolFutureUsage,
+  type PoolMode,
+} from './history/pool';
 
 /** 额度页 UI 偏好：会话级持久化（sessionStorage），跨会话不携带。 */
 export type QuotaUiState = {
   tab?: QuotaTabId;
   sortMode?: QuotaSortMode;
   viewMode?: QuotaViewMode;
-  historyMode?: QuotaHistoryMode;
-  historyRange?: QuotaHistoryRangeId;
-  historyCollapsed?: boolean;
+  poolMode?: PoolMode;
+  poolBurnWindow?: PoolBurnWindow;
+  poolFutureUsage?: PoolFutureUsage;
+  poolShowAccounts?: boolean;
+  showEmails?: boolean;
 };
 
 const QUOTA_UI_STATE_KEY = 'quotaPage.uiState';
@@ -27,7 +31,7 @@ const QUOTA_UI_STATE_KEY = 'quotaPage.uiState';
 const QUOTA_TAB_ID_SET = new Set<string>(['all', ...QUOTA_TAB_ORDER]);
 const QUOTA_SORT_MODE_SET = new Set<string>(QUOTA_SORT_MODES);
 const QUOTA_VIEW_MODE_SET = new Set<string>(QUOTA_VIEW_MODES);
-const QUOTA_HISTORY_RANGE_SET = new Set<string>(QUOTA_HISTORY_RANGES.map((range) => range.id));
+const POOL_FUTURE_USAGE_SET = new Set<string>(POOL_FUTURE_USAGE.map((option) => option.id));
 
 export const isQuotaTabId = (value: unknown): value is QuotaTabId =>
   typeof value === 'string' && QUOTA_TAB_ID_SET.has(value);
@@ -38,11 +42,16 @@ export const isQuotaSortMode = (value: unknown): value is QuotaSortMode =>
 export const isQuotaViewMode = (value: unknown): value is QuotaViewMode =>
   typeof value === 'string' && QUOTA_VIEW_MODE_SET.has(value);
 
-const isHistoryMode = (value: unknown): value is QuotaHistoryMode =>
+const isPoolMode = (value: unknown): value is PoolMode =>
   value === 'remaining' || value === 'drain';
 
-const isHistoryRange = (value: unknown): value is QuotaHistoryRangeId =>
-  typeof value === 'string' && QUOTA_HISTORY_RANGE_SET.has(value);
+const isPoolBurnWindow = (value: unknown): value is PoolBurnWindow =>
+  (POOL_BURN_WINDOWS as readonly unknown[]).includes(value);
+
+const isPoolFutureUsage = (value: unknown): value is PoolFutureUsage =>
+  typeof value === 'string' && POOL_FUTURE_USAGE_SET.has(value);
+
+const optionalBoolean = (value: unknown) => (typeof value === 'boolean' ? value : undefined);
 
 export const readQuotaUiState = (): QuotaUiState | null => {
   if (typeof window === 'undefined') return null;
@@ -55,10 +64,13 @@ export const readQuotaUiState = (): QuotaUiState | null => {
       tab: isQuotaTabId(parsed.tab) ? parsed.tab : undefined,
       sortMode: isQuotaSortMode(parsed.sortMode) ? parsed.sortMode : undefined,
       viewMode: isQuotaViewMode(parsed.viewMode) ? parsed.viewMode : undefined,
-      historyMode: isHistoryMode(parsed.historyMode) ? parsed.historyMode : undefined,
-      historyRange: isHistoryRange(parsed.historyRange) ? parsed.historyRange : undefined,
-      historyCollapsed:
-        typeof parsed.historyCollapsed === 'boolean' ? parsed.historyCollapsed : undefined,
+      poolMode: isPoolMode(parsed.poolMode) ? parsed.poolMode : undefined,
+      poolBurnWindow: isPoolBurnWindow(parsed.poolBurnWindow) ? parsed.poolBurnWindow : undefined,
+      poolFutureUsage: isPoolFutureUsage(parsed.poolFutureUsage)
+        ? parsed.poolFutureUsage
+        : undefined,
+      poolShowAccounts: optionalBoolean(parsed.poolShowAccounts),
+      showEmails: optionalBoolean(parsed.showEmails),
     };
   } catch {
     return null;

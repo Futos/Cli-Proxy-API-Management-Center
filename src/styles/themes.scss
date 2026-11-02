@@ -86,6 +86,8 @@
   --viz-failure: #c65746;
   // 额度历史图：单序列暖橙（浅色 L≈0.6，对比度 ≥3:1）。
   --viz-quota: #c4623f;
+  // 额度池预测图：Codex 冷蓝，与 Claude 暖橙并列时通过色盲分离校验。
+  --viz-quota-codex: #3a68c9;
 
   // 动效词汇表：内置 ease 太弱，交互反馈统一用强减速曲线。
   // 按压 160ms / 悬停 200ms，UI 动效不超过 300ms。
@@ -241,6 +243,7 @@
   --viz-success: #0fae78;
   --viz-failure: #cf4b3a;
   --viz-quota: #d4704e;
+  --viz-quota-codex: #5f8ee6;
 }
 
 @media (max-width: 768px),

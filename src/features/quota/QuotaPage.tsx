@@ -23,7 +23,6 @@ import { useAuthStore, useQuotaStore, useThemeStore } from '@/stores';
 import type { AuthFileItem, ResolvedTheme } from '@/types';
 import { getQuotaCacheKey } from '@/utils/quota/identity';
 import { ProviderTabs } from '@/features/authFiles/components/ProviderTabs';
-import { getTypeLabel } from '@/features/authFiles/constants';
 import { QuotaHeader } from './components/QuotaHeader';
 import { QuotaCard } from './components/QuotaCard';
 import { QuotaGroupCard } from './components/QuotaGroupCard';
@@ -50,7 +49,7 @@ import {
   sumQuotaWindows,
   type QuotaFileEntry,
 } from './logic';
-import { QuotaHistoryPanel } from './history/QuotaHistoryPanel';
+import { QuotaPoolPanel } from './history/QuotaPoolPanel';
 import { useQuotaHistory } from './history/useQuotaHistory';
 import { nextRecoveryMs } from './resetSchedule';
 import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from './providers';
@@ -86,6 +85,7 @@ export function QuotaPage() {
   const [viewMode, setViewMode] = useState<QuotaViewMode>(
     () => readQuotaUiState()?.viewMode ?? 'ledger'
   );
+  const [showEmails, setShowEmails] = useState(() => readQuotaUiState()?.showEmails ?? false);
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(() => new Set());
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -228,6 +228,13 @@ export function QuotaPage() {
     writeQuotaUiState({ viewMode: next as QuotaViewMode });
   }, []);
 
+  const toggleEmails = useCallback(() => {
+    setShowEmails((current) => {
+      writeQuotaUiState({ showEmails: !current });
+      return !current;
+    });
+  }, []);
+
   const toggleGroup = useCallback((type: string) => {
     setCollapsedGroups((current) => {
       const next = new Set(current);
@@ -368,6 +375,7 @@ export function QuotaPage() {
       resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
       entranceDelayMs={cardEntranceDelay(index)}
       layout={layout}
+      namesMasked={!showEmails}
       onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
       onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
     />
@@ -376,13 +384,15 @@ export function QuotaPage() {
   const isEmpty = !loading && filteredEntries.length === 0;
 
   return (
-    <div className={styles.page} ref={revealRef}>
+    <div className={styles.page} ref={revealRef} data-mask-names={showEmails ? undefined : 'true'}>
       <QuotaHeader
         totalCount={entries.length}
         loadedCount={loadedCount}
         attentionCount={attentionCount}
         refreshing={loading || batchLoading}
         disableControls={disableControls}
+        showEmails={showEmails}
+        onToggleEmails={toggleEmails}
         onRefreshAll={handleRefreshAll}
       />
 
@@ -398,10 +408,12 @@ export function QuotaPage() {
           />
         </div>
 
-        <QuotaHistoryPanel
+        <QuotaPoolPanel
           history={quotaHistory}
           tab={tab}
-          providerLabel={tab === 'all' ? '' : getTypeLabel(t, tab)}
+          entries={entries}
+          quotaFor={getQuota}
+          resolvedTheme={resolvedTheme}
         />
 
         <div className={styles.toolbar}>
@@ -557,6 +569,7 @@ export function QuotaPage() {
           quotaFor={getQuota}
           displayNameFor={displayNameFor}
           resolvedTheme={resolvedTheme}
+          namesMasked={!showEmails}
         />
       </section>
     </div>
