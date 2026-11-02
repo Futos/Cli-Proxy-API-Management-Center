@@ -15,6 +15,7 @@ import {
   getTypeLabel,
   isThemeSurfaceIconProvider,
 } from '@/features/authFiles/constants';
+import { QUOTA_SENSITIVE_CLASS } from '../constants';
 import { bindQuotaClasses } from '../types';
 import { QUOTA_ADAPTERS, type QuotaCardState } from '../providers';
 import { isQuotaRefreshDisabled, type QuotaFileEntry } from '../logic';
@@ -37,6 +38,8 @@ export type QuotaCardProps = {
   entranceDelayMs?: number | null;
   /** `row` lays identity, limits and actions out side by side for the ledger view. */
   layout?: 'card' | 'row';
+  /** "Show emails" is off: the name is blurred and kept out of its tooltip. */
+  namesMasked?: boolean;
   onRefresh: () => void;
   onReset: () => void;
 };
@@ -50,6 +53,7 @@ export function QuotaCard(props: QuotaCardProps) {
     resetting,
     entranceDelayMs,
     layout = 'card',
+    namesMasked = false,
     onRefresh,
     onReset,
   } = props;
@@ -141,7 +145,10 @@ export function QuotaCard(props: QuotaCardProps) {
             <span className={styles.iconFallback}>{typeLabel.slice(0, 1).toUpperCase()}</span>
           )}
         </span>
-        <span className={styles.fileName} title={displayName}>
+        <span
+          className={`${styles.fileName} ${QUOTA_SENSITIVE_CLASS}`}
+          title={namesMasked ? undefined : displayName}
+        >
           {displayName}
         </span>
       </header>

@@ -12,6 +12,12 @@
   min-width: 0;
 }
 
+/* 「显示邮箱」关闭时模糊账号名（凭证文件名通常就是邮箱），便于截图与共享屏幕。 */
+.page[data-mask-names='true'] :global(.quota-sensitive) {
+  filter: blur(5px);
+  user-select: none;
+}
+
 /* ---------- 工作区（tabs + 网格 + 分页） ---------- */
 
 .workbench {

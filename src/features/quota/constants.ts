@@ -29,3 +29,6 @@ export type QuotaViewMode = (typeof QUOTA_VIEW_MODES)[number];
 
 /** 与 useRevealGroup 的 GROUP_MAX_TOTAL 一致：卡片级联总预算 360ms。 */
 export const CARD_ENTRANCE_BUDGET_MS = 360;
+
+/** Marks account names the page blurs while emails are hidden (see QuotaPage.module.scss). */
+export const QUOTA_SENSITIVE_CLASS = 'quota-sensitive';
