@@ -168,3 +168,11 @@ describe('quota pool panel rendering', () => {
     expect(render('kimi')).toBe('');
   });
 });
+
+describe('quota page sections', () => {
+  test('leaves the quota windows timeline off the page; the pool forecast replaces it', () => {
+    const source = readFileSync('src/features/quota/QuotaPage.tsx', 'utf8');
+    expect(source).not.toContain('QuotaTimeline');
+    expect(source).toContain('<QuotaPoolPanel');
+  });
+});

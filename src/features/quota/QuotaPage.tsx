@@ -26,7 +26,6 @@ import { ProviderTabs } from '@/features/authFiles/components/ProviderTabs';
 import { QuotaHeader } from './components/QuotaHeader';
 import { QuotaCard } from './components/QuotaCard';
 import { QuotaGroupCard } from './components/QuotaGroupCard';
-import { QuotaTimeline } from './components/QuotaTimeline';
 import {
   CARD_ENTRANCE_BUDGET_MS,
   QUOTA_PAGE_SIZE,
@@ -62,12 +61,6 @@ import styles from './QuotaPage.module.scss';
 
 const TAB_IDS: string[] = ['all', ...QUOTA_TAB_ORDER];
 const SKELETON_CARD_COUNT = 6;
-
-/**
- * Existing providers display filenames; Devin's card and timeline share an
- * identity-aware display label. Keep the filename fallback stable for memoization.
- */
-const displayNameFor = (name: string) => name;
 
 export function QuotaPage() {
   const { t } = useTranslation();
@@ -562,15 +555,6 @@ export function QuotaPage() {
             </Button>
           </div>
         )}
-
-        {/* 时间线只比较当前页凭证，避免大量凭证一次性生成无界泳道。 */}
-        <QuotaTimeline
-          entries={pageItems}
-          quotaFor={getQuota}
-          displayNameFor={displayNameFor}
-          resolvedTheme={resolvedTheme}
-          namesMasked={!showEmails}
-        />
       </section>
     </div>
   );
